@@ -3,8 +3,17 @@
 * Written by: Fritz and Christian
 * CMS 495 - Dr. Fuse
 *************************************************************************
-
 * planet information from : https://nssdc.gsfc.nasa.gov/
+
+* =======================================================================
+*                         IMPORTING TO EXCEL
+* =======================================================================
+* > Open Excel
+* > Open > Browse > [File Location] (Look for .txt files)
+* > Choose Delimited File
+* > Choose comma as a delimiter
+* > Open file in excel
+* =======================================================================
 
        MODULE PLANETS                                                        ! Planets Module
 *------------------------------------------------------------------------
@@ -28,10 +37,12 @@
        INTEGER :: pNum, dp, t                                                ! planetNumber, datapoints, time
        CHARACTER :: exit                                                     ! exit to terminate program
 
-       ! Formats
+       ! formats
        CHARACTER(LEN=*), PARAMETER :: FMT1 = "(A12, A12, A12)"               ! format #1
        CHARACTER(LEN=*), PARAMETER :: FMT2 = "(F12.2, F12.6, F12.6)"         ! format #2
 
+       ! open file
+       OPEN(unit = 1, file = 'planetOrbits.txt')   
 
        ! initialize the solar system
        CALL Initsolar(ss)                                                    ! initialize the solar system
@@ -44,7 +55,7 @@
        WRITE(*,*) ''
 
        ! get user input
-1      WRITE(*,*) 'What planet do you want?'
+21      WRITE(*,*) 'What planet do you want?'
        WRITE(*,*) '0. ALL'
        WRITE(*,*) '1. Venus'
        WRITE(*,*) '2. Earth'
@@ -56,34 +67,48 @@
        READ(*,*) pNum                                                        ! read planet number
        IF((pNum.LT.0).or.(pNum.GT.7)) THEN                                   ! check if input is within bounds
               WRITE(*,*) 'Input invalid.'                                    ! if not in bounds ask for input again
-              GOTO 1
+              GOTO 21
        ENDIF
 
        ! get amount of datapoints from user
-2      WRITE(*,*) 'How many datapoints do you want?'    
+22      WRITE(*,*) 'How many datapoints do you want?'    
        READ(*,*) dp                                                          ! ask user for datapoints
        IF((dp.LT.4).or.(dp.GT.200)) THEN                                     ! check if input is reasonable
               WRITE(*,*) 'Input out of bounds.'                              ! if not ask for input again
-              GOTO 2
+              GOTO 22
        ENDIF
 
        IF(pNum.eq.0) THEN                                                    ! if user wants information on all planets
               DO i = 1, 7                                                    ! for each planet i in solar systems array
                      in = (3 * ss(i)%period) / dp                            ! calculate interval
 
+                     ! print to console
                      WRITE(*,*) ''                                                  
                      WRITE(*,*) 'Planet:', ss(i)%name                        ! print planet name
                      WRITE(*,*) 'Period (earth years):', ss(i)%period        ! print planet period
                      WRITE(*,*) 'Interval (days):', 365 * in                 ! print interval (based on data points)
-       
-       
                      WRITE(*,FMT1) 'Time', ' X', '  Y'                       ! print for table format
+       
+                     ! print to file
+                     WRITE(1,*) 'Planet,', ss(i)%name
+                     WRITE(1,*) 'Period (earth years),', ss(i)%period
+                     WRITE(1,*) 'Interval (days),', ss(i)%period
+                     WRITE(1,*) 'Time,X,Y'
+       
                      DO t = 1, dp                                            ! loop through intervals
                             CALL getPosition(ss(i),in*(t))                   ! get position of the planet at time t
-                            WRITE(*,FMT2) 365 *in*(t), ss(i)%x, ss(pi)%y     ! print position of the planet at time t
-                     ENDDO   
+                            WRITE(*,FMT2) 365*in*(t), ss(i)%x, ss(i)%y       ! print position of the planet at time t
+                       WRITE(1,*) 365*in*(t),',', ss(i)%x,',', ss(i)%y       ! write data to text file (no formatting)
+                     ENDDO  
+                     
+                     ! print console spacing
                      WRITE(*,*) ''
                      WRITE(*,*) '--------------------------------------'
+
+                     ! print file spacing
+                     WRITE(1,*) ''
+                     WRITE(1,*) ''
+                     
               ENDDO
        ELSE                                                                  ! if user wants information on a single planet
               in = (3 * ss(pNum)%period) / dp                                ! calculate interval
@@ -93,11 +118,17 @@
               WRITE(*,*) 'Period (earth years):', ss(pNum)%period            ! print planet period
               WRITE(*,*) 'Interval (days):', 365 * in                        ! print interval (based on data points)
 
+              ! print to file
+              WRITE(1,*) 'Planet,', ss(i)%name
+              WRITE(1,*) 'Period (earth years),', ss(i)%period
+              WRITE(1,*) 'Interval (days),', ss(i)%period
+              WRITE(1,*) 'Time,X,Y'
 
               WRITE(*,FMT1) 'Time', ' X', '  Y'                              ! print for table format
               DO t = 1, dp                                                   ! loop through intervals
                      CALL getPosition(ss(pNum),in*(t))                       ! get position of the planet at time t
                      WRITE(*,FMT2) 365 *in*(t), ss(pNum)%x, ss(pNum)%y       ! print position of the planet at time t
+                     WRITE(1,*) 365*in*(t),',', ss(i)%x,',', ss(i)%y         ! write data to text file (no formatting)
               ENDDO
        ENDIF
 
@@ -111,39 +142,35 @@
        SUBROUTINE Initsolar(solarsystem)
        
        ! define variables
-       USE PLANETS
-       TYPE(PLANET), DIMENSION(7) :: solarsystem
+       USE PLANETS                                                           ! import planets module
+       TYPE(PLANET), DIMENSION(7) :: solarsystem                             ! declare solar system as an array of planets
 
+       ! informations from https://nssdc.gsfc.nasa.gov/
+       ! planets are being initialized to simulate real-world
        ! VENUS
        solarsystem(1)%name = 'VENUS'                                  
        solarsystem(1)%a = 0.72333199
        CALL getPeriod(solarsystem(1))
-
        ! EARTH
        solarsystem(2)%name = 'EARTH'                                  
        solarsystem(2)%a = 1.0
        CALL getPeriod(solarsystem(2))
-
        ! MARS
        solarsystem(3)%name = 'MARS'                                  
        solarsystem(3)%a = 1.52366231
        CALL getPeriod(solarsystem(3))
-
        ! JUPITER
        solarsystem(4)%name = 'JUPITER'                                  
        solarsystem(4)%a = 5.20336301
        CALL getPeriod(solarsystem(4))
-
        ! SATURN
        solarsystem(5)%name = 'SATURN'                                  
        solarsystem(5)%a = 9.53707032
        CALL getPeriod(solarsystem(5))
-
        ! URANUS
        solarsystem(6)%name = 'URANUS'                                  
        solarsystem(6)%a = 19.19126393
        CALL getPeriod(solarsystem(6))
-
        ! NEPTUNE
        solarsystem(7)%name = 'NEPTUNE'                                  
        solarsystem(7)%a = 30.06896348
@@ -157,10 +184,10 @@
 
        ! define variables
        USE PLANETS                                                           ! import planets module
-       TYPE(PLANET) :: p                                               ! define planet
+       TYPE(PLANET) :: p                                                     ! define planet
 
        ! calculate period
-       p%period = SQRT(((p%a)**3))                                 ! calculate period in earth years
+       p%period = SQRT(((p%a)**3))                                           ! calculate period in earth years
 
        END
 *------------------------------------------------------------------------

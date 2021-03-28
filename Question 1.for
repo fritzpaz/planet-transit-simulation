@@ -23,15 +23,29 @@
 *------------------------------------------------------------------------
        ! import the planet data structure
        USE PLANETS                                                           ! import plants module    
-       TYPE(PLANET), DIMENSION(7) :: ss                                       ! create array of planets (solar system)
-       REAL :: in
-       INTEGER :: pNum, datapoints, t
+       TYPE(PLANET), DIMENSION(7) :: ss                                      ! create array of planets (solar system)
+       REAL :: in                                                            ! interval
+       INTEGER :: pNum, dp, t                                                ! planetNumber, datapoints, time
+       CHARACTER :: exit                                                     ! exit to terminate program
+
+       ! Formats
+       CHARACTER(LEN=*), PARAMETER :: FMT1 = "(A12, A12, A12)"               ! format #1
+       CHARACTER(LEN=*), PARAMETER :: FMT2 = "(F12.2, F12.6, F12.6)"         ! format #2
+
 
        ! initialize the solar system
-       CALL INITsolar(ss)
+       CALL Initsolar(ss)                                                    ! initialize the solar system
        
+       ! print introduction
+       WRITE(*,*) 'Welcome to the Planet Orbit Software'
+       WRITE(*,*) 'I will predict the orbit of a planet in the solar'
+       WRITE(*,*) 'system of your choice.'
+       WRITE(*,*) 'Or all of them!'
+       WRITE(*,*) ''
+
        ! get user input
 1      WRITE(*,*) 'What planet do you want?'
+       WRITE(*,*) '0. ALL'
        WRITE(*,*) '1. Venus'
        WRITE(*,*) '2. Earth'
        WRITE(*,*) '3. Mars'
@@ -39,26 +53,56 @@
        WRITE(*,*) '5. Saturn'
        WRITE(*,*) '6. Uranus'
        WRITE(*,*) '7. Neptune'
-       READ(*,*) pNum
-       IF((pNum.LT.1).or.(pNum.GT.7)) THEN
-              WRITE(*,*) 'Input invalid.'
+       READ(*,*) pNum                                                        ! read planet number
+       IF((pNum.LT.0).or.(pNum.GT.7)) THEN                                   ! check if input is within bounds
+              WRITE(*,*) 'Input invalid.'                                    ! if not in bounds ask for input again
               GOTO 1
        ENDIF
 
        ! get amount of datapoints from user
-       WRITE(*,*) 'How many datapoints do you want?'
-       READ(*,*) datapoints
+2      WRITE(*,*) 'How many datapoints do you want?'    
+       READ(*,*) dp                                                          ! ask user for datapoints
+       IF((dp.LT.4).or.(dp.GT.200)) THEN                                     ! check if input is reasonable
+              WRITE(*,*) 'Input out of bounds.'                              ! if not ask for input again
+              GOTO 2
+       ENDIF
 
-       ! calculate interval
-       in = (3 * ss(pNum)%period) / datapoints
+       IF(pNum.eq.0) THEN                                                    ! if user wants information on all planets
+              DO i = 1, 7                                                    ! for each planet i in solar systems array
+                     in = (3 * ss(i)%period) / dp                            ! calculate interval
 
-       DO t = 1, datapoints
-              CALL getPosition(ss(pNum),(t-1), t)
-              WRITE(*,*) 'pos x', ss(pNum)%x
-              WRITE(*,*) 'pos y', ss(pNum)%y
-       ENDDO
+                     WRITE(*,*) ''                                                  
+                     WRITE(*,*) 'Planet:', ss(i)%name                        ! print planet name
+                     WRITE(*,*) 'Period (earth years):', ss(i)%period        ! print planet period
+                     WRITE(*,*) 'Interval (days):', 365 * in                 ! print interval (based on data points)
+       
+       
+                     WRITE(*,FMT1) 'Time', ' X', '  Y'                       ! print for table format
+                     DO t = 1, dp                                            ! loop through intervals
+                            CALL getPosition(ss(i),in*(t))                   ! get position of the planet at time t
+                            WRITE(*,FMT2) 365 *in*(t), ss(i)%x, ss(pi)%y     ! print position of the planet at time t
+                     ENDDO   
+                     WRITE(*,*) ''
+                     WRITE(*,*) '--------------------------------------'
+              ENDDO
+       ELSE                                                                  ! if user wants information on a single planet
+              in = (3 * ss(pNum)%period) / dp                                ! calculate interval
 
-       READ(*,*) datapoints
+              WRITE(*,*) ''                                                  
+              WRITE(*,*) 'Planet:', ss(pNum)%name                            ! print planet name
+              WRITE(*,*) 'Period (earth years):', ss(pNum)%period            ! print planet period
+              WRITE(*,*) 'Interval (days):', 365 * in                        ! print interval (based on data points)
+
+
+              WRITE(*,FMT1) 'Time', ' X', '  Y'                              ! print for table format
+              DO t = 1, dp                                                   ! loop through intervals
+                     CALL getPosition(ss(pNum),in*(t))                       ! get position of the planet at time t
+                     WRITE(*,FMT2) 365 *in*(t), ss(pNum)%x, ss(pNum)%y       ! print position of the planet at time t
+              ENDDO
+       ENDIF
+
+       WRITE(*,*) 'Press any key to terminate the program.'                  ! terminate the program     
+       READ(*,*) exit                                                        ! exit
 
        END
 *------------------------------------------------------------------------
@@ -122,17 +166,17 @@
 *------------------------------------------------------------------------
 
        ! find position of planet
-       SUBROUTINE getPosition(p, t0, t1)
+       SUBROUTINE getPosition(p, t)
        
        ! define variables
        USE PLANETS                                                           ! import planets module
        TYPE(PLANET) :: p                                                     ! define planet
-       REAL :: t0, t1                                                        ! define t0 and t1 (times)
+       REAL :: t                                                             ! define t0 and t1 (times)
        REAL(8) :: pc                                                         ! define p (proportionality constant)
        
        ! calculate position
        pc = 2 * 3.1416 / p%period                                            c! calculate proportionality constant
-       p%x = p%a * COS(pc * (t1 - t0))                                      ! x-position in relation to central body as function of time
-       p%y = p%a * SIN(pc * (t1 - t0))                                      ! y-position in relation to central body as function of time
+       p%x = p%a * COS(pc * (t))                                             ! x-position in relation to central body as function of time
+       p%y = p%a * SIN(pc * (t))                                             ! y-position in relation to central body as function of time
 
        END SUBROUTINE
